@@ -1,4 +1,3 @@
-```markdown
 # Buffer Overflow Exploitation & Low-Level Security Research
 
 A comprehensive exploration of memory corruption vulnerabilities, exploit development, and modern defensive techniques in x86_64 systems.
@@ -34,6 +33,7 @@ Built a foundation in low-level debugging, assembly analysis, and memory forensi
 (gdb) x/8bx $rbp-0x8          # Little-endian (actual memory)
 0x7ffffff6ffc8: 0xef 0xee 0xee 0xee 0xee 0xbe 0xad 0xde
 ```
+
 
 **Key Takeaway**: When injecting shellcode or overwriting addresses, you must account for little-endian byte ordering on x86_64.
 
@@ -145,5 +145,3 @@ Understanding how high-level code compiles to assembly helps write more secure s
 ## Ethical Notice
 
 This work was completed in a controlled educational environment. All techniques should only be used for authorized security research, defensive testing, and educational purposes.
-
-**Academic Integrity**: If you're working on similar coursework, please solve problems yourself. Using this code for academic assignments constitutes plagiarism.
