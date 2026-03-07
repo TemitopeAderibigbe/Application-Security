@@ -37,6 +37,7 @@ Built a foundation in low-level debugging, assembly analysis, and memory forensi
 
 **Key Takeaway**: When injecting shellcode or overwriting addresses, you must account for little-endian byte ordering on x86_64.
 
+[Lab Write-Up](https://docs.google.com/document/d/1x-F4evrRbWoNU34qojijxL2nvTYrAALDq9e8G1i0CBY/edit?usp=sharing)
 ---
 
 ## Project Part 1: Classic Buffer Overflows
@@ -147,5 +148,3 @@ This work was completed in a controlled educational environment. All techniques 
 
 **Academic Integrity**: If you're working on similar coursework, please solve problems yourself. Using this code for academic assignments constitutes plagiarism.
 ```
-
-**Much cleaner!** Just the essential information without extra fluff. Good?
