@@ -19,8 +19,8 @@ Analyzed compiled binaries to locate function addresses
 Examined stack memory during program execution
 Practiced endianness conversions for exploit development
 
-View detailed write-up
-
+[View detailed write-up
+]([url](https://docs.google.com/document/d/1x-F4evrRbWoNU34qojijxL2nvTYrAALDq9e8G1i0CBY/edit?usp=sharing))
 Project Part 1: Basic Buffer Overflow Attacks
 Exploited three vulnerable C programs using classical buffer overflow techniques.
 Targets:
