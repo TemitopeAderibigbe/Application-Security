@@ -147,4 +147,3 @@ Understanding how high-level code compiles to assembly helps write more secure s
 This work was completed in a controlled educational environment. All techniques should only be used for authorized security research, defensive testing, and educational purposes.
 
 **Academic Integrity**: If you're working on similar coursework, please solve problems yourself. Using this code for academic assignments constitutes plagiarism.
-```
