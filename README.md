@@ -1,56 +1,27 @@
 ```markdown
 # Buffer Overflow Exploitation & Low-Level Security Research
 
-> A comprehensive exploration of memory corruption vulnerabilities, exploit development, and modern defensive techniques in x86_64 systems.
+A comprehensive exploration of memory corruption vulnerabilities, exploit development, and modern defensive techniques in x86_64 systems.
 
-![Security](https://img.shields.io/badge/Security-Research-red)
-![Architecture](https://img.shields.io/badge/Architecture-x86__64-blue)
-![Language](https://img.shields.io/badge/Language-C%20%7C%20Python%20%7C%20Assembly-green)
+**Educational Purpose**: All techniques demonstrated here are for authorized security research and learning in controlled environments.
 
 ---
 
-## Project Overview
+## Lab: GDB & Memory Analysis Fundamentals
 
-After learning about major security breaches like Heartbleed and the Equifax data leak, I wanted to understand **how** these attacks actually work at the machine level. This project gave me hands-on experience with memory corruption, exploit development, and the defensive techniques used to prevent them.
-
-**⚠️ Educational Purpose**: All techniques demonstrated here are for authorized security research and learning in controlled environments.
-
----
-
-## 📚 Table of Contents
-
-- [Lab: GDB & Memory Analysis Fundamentals](#lab-gdb--memory-analysis-fundamentals)
-- [Project: Exploit Development](#project-exploit-development)
-  - [Part 1: Classic Buffer Overflows](#part-1-classic-buffer-overflows)
-  - [Part 2: Advanced Exploitation Techniques](#part-2-advanced-exploitation-techniques)
-- [Technical Stack](#technical-stack)
-- [Key Learnings](#key-learnings)
-- [What's Next](#whats-next)
-
----
-
-## 🔬 Lab: GDB & Memory Analysis Fundamentals
-
-### Overview
 Built a foundation in low-level debugging, assembly analysis, and memory forensics - essential skills for understanding how exploits work.
 
-### What I Did
-
-#### Task 1-3: Assembly Code Analysis
+### Assembly Code Analysis
 - Disassembled compiled binaries to locate function addresses and calls
 - Distinguished between call instruction addresses vs. function entry points
 - Analyzed standard library function linking in compiled executables
 
-**Key Insight**: Understanding the difference between "where a function is called" vs. "where a function begins" is crucial for exploit development.
-
-#### Task 4-5: Runtime Stack Inspection
+### Runtime Stack Inspection
 - Set breakpoints and examined stack memory during execution
 - Located specific data on the stack using GDB's `x/` command
-- Found string literals and local variables at runtime
+- Systematically searched for return addresses and local variables
 
-**Technique Learned**: Systematic memory examination to locate return addresses and local variables - essential for crafting exploits.
-
-#### Task 6-7: Endianness & Memory Representation
+### Endianness & Memory Representation
 - Examined how multi-byte values are stored in x86_64 (little-endian)
 - Compared raw byte representation vs. interpreted values
 - Practiced converting between big-endian and little-endian formats
@@ -64,268 +35,117 @@ Built a foundation in low-level debugging, assembly analysis, and memory forensi
 0x7ffffff6ffc8: 0xef 0xee 0xee 0xee 0xee 0xbe 0xad 0xde
 ```
 
-**Why This Matters**: When injecting shellcode or overwriting addresses, you must account for little-endian byte ordering on x86_64.
-
-### Skills Developed
-- ✅ x86_64 assembly language reading
-- ✅ GDB debugging proficiency
-- ✅ Stack frame analysis
-- ✅ Memory layout understanding
-- ✅ Endianness conversions
-
-[View detailed lab write-up](./docs/lab_writeup.md)
+**Key Takeaway**: When injecting shellcode or overwriting addresses, you must account for little-endian byte ordering on x86_64.
 
 ---
 
-## 💥 Project: Exploit Development
-
-Building on the lab foundations, I developed working exploits against vulnerable C programs to understand attack vectors and defensive measures.
-
----
-
-## Part 1: Classic Buffer Overflows
+## Project Part 1: Classic Buffer Overflows
 
 ### Target 1: String-Based Overflow
-**Vulnerability**: Unsafe `gets()` function allows unbounded input into a fixed-size buffer.
+Exploited unsafe `gets()` function to overwrite return address and redirect execution flow.
 
-**Attack Strategy**:
-- Analyzed stack layout to find offset to return address
-- Crafted input to overwrite return address with target function address
-- Redirected execution flow to bypass authentication
-
-**Key Code**:
-```python
-# Calculate padding to reach return address
-padding = b'A' * offset
-target_address = struct.pack('<Q', 0x401234)  # Little-endian 64-bit address
-payload = padding + target_address
-```
-
-**Learning**: Even simple input validation failures can lead to complete control flow hijacking.
-
----
+**Technique**: Stack layout analysis to calculate exact offset to return address, then crafted input to hijack control flow.
 
 ### Target 2: Shellcode Injection
-**Vulnerability**: Command-line argument overflow with executable stack.
+Injected x86_64 shellcode to spawn `/bin/sh` with root privileges.
 
-**Attack Strategy**:
-- Injected x86_64 shellcode to spawn `/bin/sh`
-- Overwrote return address to point to shellcode on stack
+**Technique**: 
+- Placed shellcode on executable stack
+- Overwrote return address to point to shellcode
 - Gained root shell through privilege escalation
 
-**Shellcode Overview**:
-```assembly
-; Compact /bin/sh shellcode
-xor rsi, rsi        ; argv = NULL
-xor rdx, rdx        ; envp = NULL
-mov rax, 59         ; syscall number for execve
-syscall             ; Execute /bin/sh
-```
-
-**Challenge**: Finding exact stack address where shellcode lands required careful GDB analysis.
-
----
-
 ### Target 3: Environment Variable Exploitation
-**Vulnerability**: Buffer overflow triggered through environment variables.
+Used environment variables as reliable shellcode storage locations.
 
-**Attack Strategy**:
-- Placed shellcode in environment variable
-- Calculated environment variable stack address
-- Overwrote return address to jump to shellcode in env
-
-**Why Different**: Environment variables are stored at predictable stack locations, making them reliable shellcode storage.
+**Technique**: Calculated environment variable stack addresses and redirected execution to shellcode stored in environment.
 
 ---
 
-## Part 2: Advanced Exploitation Techniques
+## Project Part 2: Advanced Exploitation Techniques
 
 ### Target 4: Integer Overflow → Buffer Overflow
-**Vulnerability**: Integer overflow in allocation size calculation.
+Chained integer overflow with buffer overflow to achieve code execution.
 
-**The Bug**:
+**The Vulnerability**:
 ```c
 size_t count;
-fread(&count, sizeof(size_t), 1, f);  // Attacker-controlled!
+fread(&count, sizeof(size_t), 1, f);  // Attacker-controlled
 unsigned int *buf = alloca(count * sizeof(unsigned int));
 ```
 
-**Attack Strategy**:
+**Technique**:
 - Chose `count = 0x4000000000000010`
-- When multiplied by 4: `0x4000000000000010 * 4 = 0x0000000000000040` (wraps to 64 bytes)
-- `alloca()` allocates only 64 bytes
-- Loop tries to read `count` integers → massive overflow!
-
-**Math Behind It**:
-```python
-count = 0x4000000000000010
-# count * 4 in 64-bit wraps around:
-# 0x10000000000000040 → 0x0000000000000040 = 64 bytes
-
-# But loop iterates 'count' times, writing way past buffer end
-```
-
-**Key Learning**: Integer overflows can cascade into memory corruption vulnerabilities.
-
----
+- When multiplied by 4: wraps to `0x40` (64 bytes)
+- `alloca()` allocates only 64 bytes, but loop reads `count` integers
+- Result: massive buffer overflow
 
 ### Target 5: Bypassing DEP (Data Execution Prevention)
-**Challenge**: Stack is marked non-executable. Can't execute injected shellcode.
+Executed code when stack is marked non-executable.
 
-**Solution**: Return-to-libc attack
-- Found existing code that calls `system()`
+**Technique**: Return-to-libc attack
+- Located existing `system()` function in memory
 - Set up stack to call `system("/bin/sh")`
-- No shellcode needed - used existing executable code!
-
-**Stack Layout**:
-```
-[padding] [system_addr] [return_addr] [ptr_to_"/bin/sh"]
-```
-
-**Why This Works**: DEP only prevents executing stack data, not jumping to existing executable code.
-
----
+- No shellcode needed - reused existing executable code
 
 ### Target 6: Defeating ASLR (Address Space Layout Randomization)
-**Challenge**: Stack position randomized by 0-256 bytes each execution.
+Exploited target with randomized stack position (0-256 byte offset).
 
-**Solution**: NOP Sled technique
+**Technique**: NOP sled
 - Created large "slide" of NOP instructions before shellcode
 - Return address points anywhere in NOP sled
-- Execution "slides" down to shellcode regardless of exact offset
-
-**Visualization**:
-```
-Stack:
-[buffer] [NOPs NOPs NOPs NOPs] [shellcode] [saved rbp] [return addr]
-         ^----- 256 bytes ----^
-         Any address in here works!
-```
-
-**Success Rate**: 100% - as long as return address hits NOP sled, exploit works.
-
----
+- Execution slides down to shellcode regardless of exact offset
+- 100% success rate
 
 ### Target 7: Return-Oriented Programming (ROP)
-**Challenge**: DEP enabled. No easy `system()` function available.
+Built ROP chain to make syscalls without injecting shellcode.
 
-**Solution**: Chain together existing code "gadgets" to make syscalls
-- Found gadgets using ROPgadget tool
-- Built chain to execute: `setuid(0); execve("/bin/sh", 0, 0);`
-- No shellcode injection - pure code reuse!
+**Technique**:
+- Found code gadgets using ROPgadget tool
+- Chained gadgets to execute: `setuid(0); execve("/bin/sh", 0, 0);`
+- Pure code reuse - no shellcode injection
 
-**ROP Chain Structure**:
+**ROP Chain**:
 ```python
-# Gadget 1: pop rdi; ret    <- Load argument for setuid
-# Gadget 2: pop rax; ret    <- Load syscall number
-# Gadget 3: syscall         <- Make setuid(0) call
-# Gadget 4: pop rdi; ret    <- Load /bin/sh path
-# Gadget 5: pop rsi; ret    <- Load NULL for argv
-# Gadget 6: pop rdx; ret    <- Load NULL for envp  
-# Gadget 7: pop rax; ret    <- Load syscall 59 (execve)
-# Gadget 8: syscall         <- Execute /bin/sh
+# Chain gadgets to set registers and make syscalls
+pop_rdi + 0x0           # setuid(0)
+pop_rax + 105           # syscall number for setuid
+syscall_gadget
+pop_rdi + binsh_addr    # execve("/bin/sh", ...)
+pop_rsi + 0x0
+pop_rdx + 0x0
+pop_rax + 59            # syscall number for execve
+syscall_gadget
 ```
 
-**Most Complex**: Required understanding of:
-- x86_64 calling conventions
-- Linux syscall interface
-- Gadget chaining techniques
-- Stack manipulation
+---
+
+## Technical Stack
+
+**Languages**: C, Python 3, x86_64 Assembly (Intel syntax)  
+**Architecture**: Intel x86_64  
+**Tools**: GDB, ROPgadget, objdump  
+**Environment**: Linux VM (custom security research environment)
 
 ---
 
-## 🛠️ Technical Stack
+## Key Learnings
 
-| Category | Technologies |
-|----------|-------------|
-| **Languages** | C, Python 3, x86_64 Assembly (Intel syntax) |
-| **Architecture** | Intel x86_64 |
-| **Tools** | GDB, ROPgadget, pwntools, objdump |
-| **Environment** | Linux VM (custom security research environment) |
-| **Compilation** | GCC with `-fno-stack-protector -z execstack` |
+### Memory Safety is Critical
+Even small bugs (off-by-one errors, integer overflows) can cascade into complete system compromise. This demonstrates why memory-safe languages and automatic bounds checking are essential for security-critical code.
 
----
+### Defense in Depth Works
+Modern systems stack multiple protections (Stack Canaries, DEP, ASLR) because no single defense is perfect. Attackers must bypass all of them; defenders only need one to work.
 
-## 🧠 Key Learnings
-
-### 1️⃣ Memory Safety is Critical
-Even small bugs (off-by-one errors, integer overflows) can cascade into complete system compromise. This is why:
-- Memory-safe languages (Rust, Go) are essential for security-critical code
-- Input validation must be comprehensive
-- Bounds checking should be automatic, not manual
-
-### 2️⃣ Defense in Depth Works
-Modern systems stack multiple protections because **no single defense is perfect**:
-- **Stack Canaries**: Detect buffer overflows
-- **DEP/NX**: Prevent shellcode execution
-- **ASLR**: Randomize memory layout
-- **CFI**: Validate control flow transfers
-
-Attackers must bypass ALL of them - defenders only need ONE to work.
-
-### 3️⃣ The Attacker's Advantage
-- Defenders must protect against **all possible attacks**
-- Attackers only need to find **one weakness**
-- This asymmetry drives the need for secure-by-default systems
-
-### 4️⃣ Low-Level Understanding Matters
-Even when writing high-level code:
-- Understanding compilation helps you write more secure code
-- Knowing assembly aids in debugging subtle issues
-- Memory layout knowledge prevents common vulnerabilities
+### Low-Level Understanding Matters
+Understanding how high-level code compiles to assembly helps write more secure software and debug subtle vulnerabilities.
 
 ---
 
-## 🔮 What's Next
+## Ethical Notice
 
-Building on this foundation, I'm exploring:
+This work was completed in a controlled educational environment. All techniques should only be used for authorized security research, defensive testing, and educational purposes.
 
-- [ ] **Modern Exploit Mitigations**
-  - Control Flow Integrity (CFI)
-  - Intel CET (Control-flow Enforcement Technology)
-  - ARM Pointer Authentication Codes (PAC)
+**Academic Integrity**: If you're working on similar coursework, please solve problems yourself. Using this code for academic assignments constitutes plagiarism.
+```
 
-- [ ] **Vulnerability Discovery**
-  - Fuzzing with AFL/libFuzzer
-  - Static analysis tools
-  - Symbolic execution
-
-- [ ] **Binary Hardening**
-  - Compiler hardening flags
-  - Position-Independent Executables (PIE)
-  - RELRO (Relocation Read-Only)
-
-- [ ] **Real-World Security**
-  - CTF competitions
-  - Bug bounty programs
-  - Open-source security audits
-
----
-
-## 📫 Let's Connect
-
-Interested in discussing security research, low-level systems, or how these concepts apply to real-world development?
-
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue)](your-linkedin)
-[![Email](https://img.shields.io/badge/Email-Contact-red)](mailto:your-email)
-[![Portfolio](https://img.shields.io/badge/Portfolio-Visit-green)](your-website)
-
----
-
-## ⚖️ Ethical Notice
-
-This work was completed in a controlled educational environment. All techniques should **only** be used for:
-- ✅ Authorized security research
-- ✅ Defensive security testing  
-- ✅ Educational purposes in controlled environments
-
-**Never** use these techniques against systems you don't own or have explicit permission to test.
-
-### Academic Integrity
-If you're working on similar coursework, **please solve problems yourself**. Understanding these concepts requires hands-on practice, not copying solutions. Using this code for academic assignments constitutes plagiarism.
-
----
-
-## 📄 License
-
-This project is shared for educational and portfolio purposes. Please respect academic integrity policies and use responsibly.
+**Much cleaner!** Just the essential information without extra fluff. Good?
